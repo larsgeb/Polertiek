@@ -57,6 +57,12 @@
         <div id="dendrogram" style="width: 100%; height: 500px;"></div>
       </div>
     </div>
+
+    <div class="row">
+      <div class="col-md-12 p-3 mt-3">
+        <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="larsgebraad" data-color="#FFDD00" data-emoji="☕" data-font="Lato" data-text="Support een koffie" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+      </div>
+    </div>
     <script>
       function setChartHeight(chartId) {
         var chartContainer = document.getElementById(chartId)
@@ -191,7 +197,7 @@
                 x: branchIcoord,
                 y: branchDcoord,
                 name: ``, // Custom name for the trace
-
+      
                 //text: branchIvl,
                 marker: {
                   color: branchColor,
@@ -206,17 +212,17 @@
               // Adding the trace to the array of traces
               dendrogramTraces.push(dendrogramTrace)
             }
-
-            const partiesLength = parties.length;
-            const customXAxisTicks = Array.from({ length: Math.ceil(partiesLength) }, (_, index) => 5 + index * 10);
-            
+      
+            const partiesLength = parties.length
+            const customXAxisTicks = Array.from({ length: Math.ceil(partiesLength) }, (_, index) => 5 + index * 10)
+      
             // Creating a layout for the plot
             const layoutd = {
               title: 'Dendrogram partijen',
               xaxis: {
                 title: 'Partij',
-                tickvals: customXAxisTicks,  // Specify the x-axis tick positions
-                ticktext: parties, // Specify the x-axis tick labels
+                tickvals: customXAxisTicks, // Specify the x-axis tick positions
+                ticktext: parties // Specify the x-axis tick labels
               },
               yaxis: {
                 title: 'Clusterafstand'
