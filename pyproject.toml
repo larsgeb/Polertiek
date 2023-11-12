@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polertiek"
+version = "0.0.1"
+authors = [{ name = "Lars Gebraad", email = "larsgebraad@apple.com" }]
+description = "Visualizaties en web app op basis van 'Dutch Parliamentary Voting Dataset'."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas",
+    "matplotlib",
+    "numpy",
+    "flask",
+    "jupyter",
+    "black",
+    "seaborn",
+    "scikit-learn",
+    "pysqlite3",
+    "mplcursors"
+]
+
+
+[tool.black]
+line-length = 79
+target-version = ['py39']
