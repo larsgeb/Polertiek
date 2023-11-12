@@ -77,12 +77,13 @@ def fetch_correlation_data(selected_year):
             imputer.fit_transform(df), columns=df.columns, index=df.index
         )
 
-        # Perform PCA on the imputed DataFrame
-        pca = PCA()
-        pca_result = pca.fit_transform(df_imputed)
+        # Hierarchical clustering
+        linkage_matrix = hierarchy.linkage(df_imputed.T, method="ward")
 
-        # Use the sorting order from PCA to reorder the correlation matrix
-        sorted_columns = df_imputed.columns[pca.components_[0].argsort()]
+        # Get the order of columns based on clustering
+        dendrogram = hierarchy.dendrogram(linkage_matrix, no_plot=True)
+        sorted_columns = df_imputed.columns[dendrogram["leaves"]]
+
         correlation_matrix_sorted = correlation_matrix.loc[
             sorted_columns, sorted_columns
         ]

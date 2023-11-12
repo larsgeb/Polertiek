@@ -3,6 +3,8 @@ import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from scipy.cluster import hierarchy
+
 import polertiek
 
 
@@ -41,23 +43,42 @@ pca = PCA()
 pca_result = pca.fit_transform(df_standardized)
 
 # Sort columns based on principal component loadings
-sorted_columns = df.columns[pca.components_[0].argsort()]
+sorted_columns_PCA = df.columns[pca.components_[0].argsort()]
 
-# Reorder DataFrame columns
-df_sorted = df[sorted_columns]
+# Hierarchical clustering
+linkage_matrix = hierarchy.linkage(df_standardized.T, method="ward")
 
-# Calculate the correlation matrix of the sorted DataFrame
-correlation_matrix_sorted = df_sorted.corr()
+# Get the order of columns based on clustering
+dendrogram = hierarchy.dendrogram(linkage_matrix, no_plot=True)
+sorted_columns_hierarchy = df.columns[dendrogram["leaves"]]
 
-# Create a heatmap using seaborn
-plt.figure(figsize=(15, 12))
+# Create subplots
+fig, axes = plt.subplots(1, 2, figsize=(24, 12))
+
+# Plot PCA-based sorting
 sns.heatmap(
-    correlation_matrix_sorted,
+    df[sorted_columns_PCA].corr(),
     annot=True,
     cmap="coolwarm",
     fmt=".2f",
     linewidths=0.5,
     vmin=-1,
+    ax=axes[0],
+    square=True,  # Ensure square axes
 )
-plt.title("Sorted Correlation Matrix of Party Votes")
+axes[0].set_title("PCA Sorted Correlations")
+
+# Plot hierarchical clustering-based sorting
+sns.heatmap(
+    df[sorted_columns_hierarchy].corr(),
+    annot=True,
+    cmap="coolwarm",
+    fmt=".2f",
+    linewidths=0.5,
+    vmin=-1,
+    ax=axes[1],
+    square=True,  # Ensure square axes
+)
+axes[1].set_title("Hierarchical Clustering Sorted Correlations")
+
 plt.show()
