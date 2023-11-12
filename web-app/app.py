@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 from sklearn.decomposition import PCA
+from scipy.cluster import hierarchy
 from flask_bootstrap import Bootstrap  # Import Bootstrap
 import numpy as np
 
