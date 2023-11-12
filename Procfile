@@ -1,1 +1,1 @@
-web: pip install -r requirements.txt && gunicorn src.polertiek:app
+web: pip install -r requirements.txt && gunicorn web-app.app:app
