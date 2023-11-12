@@ -23,7 +23,8 @@ dependencies = [
     "seaborn",
     "scikit-learn",
     "pysqlite3",
-    "mplcursors"
+    "mplcursors",
+    "flask_bootstrap"
 ]
 
 

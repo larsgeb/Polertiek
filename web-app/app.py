@@ -3,7 +3,6 @@ import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 from sklearn.decomposition import PCA
-import plotly.express as px
 from flask_bootstrap import Bootstrap  # Import Bootstrap
 import numpy as np
 
@@ -17,14 +16,14 @@ from sklearn.impute import SimpleImputer
 def fetch_correlation_data(selected_year):
     print(f"Fetch data for {selected_year}")
     try:
-        conn = sqlite3.connect("other_data_formats/votes.sqlite")
+        conn = sqlite3.connect("./data/votes.sqlite")
         cursor = conn.cursor()
 
         query = f"SELECT * FROM master_table WHERE strftime('%Y', vote_date) = '{selected_year}';"
         df = pd.read_sql_query(query, conn, index_col="vote_date")
 
         if df.empty:
-            query = f"SELECT * FROM new_table WHERE strftime('%Y', vote_date) = '{selected_year}';"
+            query = f"SELECT * FROM limited_info_table WHERE strftime('%Y', vote_date) = '{selected_year}';"
             df = pd.read_sql_query(query, conn, index_col="vote_date")
             if df.empty:
                 raise Exception(
@@ -112,10 +111,10 @@ def fetch_correlation_data(selected_year):
 
 
 def get_available_years():
-    conn = sqlite3.connect("other_data_formats/votes.sqlite")
+    conn = sqlite3.connect("./data/votes.sqlite")
     cursor = conn.cursor()
 
-    query = "SELECT DISTINCT strftime('%Y', vote_date) as year FROM new_table;"
+    query = "SELECT DISTINCT strftime('%Y', vote_date) as year FROM limited_info_table;"
     available_years = [str(row[0]) for row in cursor.execute(query)]
 
     conn.close()
@@ -196,4 +195,4 @@ def fetch_voting_data(selected_year):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(port=8000, debug=True)
