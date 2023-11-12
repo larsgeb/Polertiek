@@ -6,14 +6,33 @@ from sklearn.decomposition import PCA
 from scipy.cluster import hierarchy
 from flask_bootstrap import Bootstrap  # Import Bootstrap
 import numpy as np
+import os 
+from joblib import Memory
+from flask_caching import Cache
+from sklearn.impute import SimpleImputer
 
 app = Flask(__name__)
 Bootstrap(app)  # Initialize Bootstrap
 
-from sklearn.impute import SimpleImputer
 
+# Define the flask cache
+config = {
+    "DEBUG": True,          # some Flask specific configs
+    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "CACHE_DEFAULT_TIMEOUT": 300
+}
+app.config.from_mapping(config)
+cache = Cache(app)
 
-# Function to fetch data based on the selected year
+# Create a directory for caching if it doesn't exist
+if not os.path.exists("./data"):
+    os.makedirs("./data")
+
+# Specify the joblib cache directory
+cache_dir = "./data/cache"
+memory = Memory(cache_dir, verbose=0)
+
+@memory.cache
 def fetch_correlation_data(selected_year):
     print(f"Fetch data for {selected_year}")
     try:
@@ -112,7 +131,7 @@ def fetch_correlation_data(selected_year):
     except Exception as e:
         raise e
 
-
+@memory.cache
 def get_available_years():
     conn = sqlite3.connect("./data/votes.sqlite")
     cursor = conn.cursor()
@@ -127,6 +146,7 @@ def get_available_years():
 
 # New route to get available years
 @app.route("/get_available_years", methods=["GET"])
+@cache.cached(timeout=50)
 def get_available_years_route():
     try:
         years = get_available_years()
@@ -136,6 +156,7 @@ def get_available_years_route():
 
 
 @app.route("/")
+@cache.cached(timeout=50)
 def index():
     return render_template("index.html")
 
@@ -173,6 +194,7 @@ def update_plot():
 
 
 # Function to fetch data based on the selected year
+@memory.cache
 def fetch_voting_data(selected_year):
     print(f"Fetch data for {selected_year}")
     try:

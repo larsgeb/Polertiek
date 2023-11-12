@@ -24,7 +24,8 @@ dependencies = [
     "scikit-learn",
     "pysqlite3",
     "mplcursors",
-    "flask_bootstrap"
+    "flask_bootstrap",
+    "flask_caching"
 ]
 
 
