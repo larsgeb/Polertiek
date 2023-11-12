@@ -26,6 +26,8 @@ def table_exists(cursor, table_name):
     return cursor.fetchone() is not None
 
 
+
+
 def ensure_master_table(cursor):
     """
     Create the master_table if it doesn't exist.
@@ -34,8 +36,7 @@ def ensure_master_table(cursor):
     # Commit any changes before creating the master_table
     cursor.connection.commit()
 
-    # Check if master_table exists and create if necessary
-    if not table_exists(cursor, "master_table"):
+    if not table_exists(cursor, "limited_info_table"):
         cursor.execute(
             """
             CREATE TABLE limited_info_table AS
@@ -46,6 +47,9 @@ def ensure_master_table(cursor):
             ORDER BY votePerParty.vote_date;
         """
         )
+
+    # Check if master_table exists and create if necessary
+    if not table_exists(cursor, "master_table"):
 
         cursor.execute(
             """
@@ -94,102 +98,116 @@ def fetch_and_preprocess_consensus_data(
         )
 
     # Initialize empty lists to store results
-    years = []
+    quarters = []
     total_consensus_list = []
     in_line_votes_list = []
 
     # Loop through each year
     for year in range(start_year, end_year + 1):
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
+        for quarter in range(1, 5):  # 1 to 4 for each quarter
+            quarter_label = f"{year}Q{quarter}"
 
-        with sqlite3.connect(database_path) as conn:
-            cursor = conn.cursor()
-            ensure_master_table(cursor=cursor)
+            start_date = datetime(year, (quarter - 1) * 3 + 1, 1)
+            end_date = start_date + timedelta(days=89)  # 3 months - 1 day
 
-            query = f"SELECT * FROM votePerParty WHERE vote_date >= '{start_date}' AND vote_date < '{end_date}';"
+            with sqlite3.connect(database_path) as conn:
+                cursor = conn.cursor()
+                ensure_master_table(cursor=cursor)
 
-            stem_df = pd.read_sql_query(
-                query, conn
-            )  # Assuming 'vote_date' is the date column
+                query = f"SELECT * FROM votePerParty WHERE vote_date >= '{start_date}' AND vote_date < '{end_date}';"
 
-        # Drop parties with only 9 votes
-        stem_df = stem_df.loc[:, (stem_df != 9).any()]
+                stem_df = pd.read_sql_query(
+                    query, conn
+                )  # Assuming 'vote_date' is the date column
 
-        # Calculate total votes
-        try:
-            total_votes = (
-                stem_df["vote_1"] + stem_df["vote_0"] + stem_df["vote_8"]
+            # Drop parties with only 9 votes
+            stem_df = stem_df.loc[:, (stem_df != 9).any()]
+
+            # Calculate total votes
+            try:
+                total_votes = (
+                    stem_df["vote_1"] + stem_df["vote_0"] + stem_df["vote_8"]
+                )
+            except KeyError:
+                # Add results to the lists
+                quarters.append(quarter_label)
+                total_consensus_list.append(np.nan)
+                in_line_votes_list.append(pd.Series())
+                continue
+
+            # Normalize counts to obtain proportions
+            stem_df["prop_votes_1"] = stem_df["vote_1"] / total_votes
+            stem_df["prop_votes_0"] = stem_df["vote_0"] / total_votes
+            stem_df["prop_votes_8"] = stem_df["vote_8"] / total_votes
+
+            # Pivot the DataFrame to have each party as a column
+            pivot_stem_df = stem_df.pivot_table(
+                index="id",
+                columns="party",
+                values=["prop_votes_1"],
+                aggfunc="sum",
             )
-        except KeyError:
+
+            # Fill NaN values with 0
+            pivot_stem_df = pivot_stem_df.fillna(0)
+
+            # Perform weighted correlation
+            weighted_corr = pivot_stem_df.corr()
+
+            # Calculate the total number of votes for each party
+            total_votes_cast = (
+                stem_df.groupby("party")["vote_0"].sum()
+                + stem_df.groupby("party")["vote_1"].sum()
+                + stem_df.groupby("party")["vote_8"].sum()
+            )
+
+            # Calculate the outer product with the correlation matrix
+            weight = np.outer(total_votes_cast, total_votes_cast)
+            np.fill_diagonal(weight, 0)
+            weight = weight.astype(float)  # Explicitly convert to float
+            weight /= weight.sum(axis=1)
+            in_line_votes = (weighted_corr * weight).sum(axis=0)
+
+            # Recalculate the weight matrix
+            weight = np.outer(total_votes_cast, total_votes_cast)
+            np.fill_diagonal(weight, 0)
+            weight = weight.astype(float)  # Explicitly convert to float
+            weight /= weight.sum()
+
+            # Calculate total consensus
+            total_consensus = (weighted_corr * weight).sum().sum()
+
             # Add results to the lists
-            years.append(year)
-            total_consensus_list.append(np.nan)
-            in_line_votes_list.append(pd.Series())
-            continue
+            quarters.append(quarter_label)
+            total_consensus_list.append(total_consensus)
+            in_line_votes_list.append(in_line_votes)
 
-        # Normalize counts to obtain proportions
-        stem_df["prop_votes_1"] = stem_df["vote_1"] / total_votes
-        stem_df["prop_votes_0"] = stem_df["vote_0"] / total_votes
-        stem_df["prop_votes_8"] = stem_df["vote_8"] / total_votes
-
-        # Pivot the DataFrame to have each party as a column
-        pivot_stem_df = stem_df.pivot_table(
-            index="id", columns="party", values=["prop_votes_1"], aggfunc="sum"
-        )
-
-        # Fill NaN values with 0
-        pivot_stem_df = pivot_stem_df.fillna(0)
-
-        # Perform weighted correlation
-        weighted_corr = pivot_stem_df.corr()
-
-        # Calculate the total number of votes for each party
-        total_votes_cast = (
-            stem_df.groupby("party")["vote_0"].sum()
-            + stem_df.groupby("party")["vote_1"].sum()
-            + stem_df.groupby("party")["vote_8"].sum()
-        )
-
-        # Calculate the outer product with the correlation matrix
-        weight = np.outer(total_votes_cast, total_votes_cast)
-        np.fill_diagonal(weight, 0)
-        weight = weight.astype(float)  # Explicitly convert to float
-        weight /= weight.sum(axis=1)
-        in_line_votes = (weighted_corr * weight).sum(axis=0)
-
-        # Recalculate the weight matrix
-        weight = np.outer(total_votes_cast, total_votes_cast)
-        np.fill_diagonal(weight, 0)
-        weight = weight.astype(float)  # Explicitly convert to float
-        weight /= weight.sum()
-
-        # Calculate total consensus
-        total_consensus = (weighted_corr * weight).sum().sum()
-
-        # Add results to the lists
-        years.append(year)
-        total_consensus_list.append(total_consensus)
-        in_line_votes_list.append(in_line_votes)
+        # # Add results to the lists
+        # years.append(year)
+        # total_consensus_list.append(total_consensus)
+        # in_line_votes_list.append(in_line_votes)
 
     # Create a DataFrame from the results
-    consensus_per_year = pd.DataFrame(
+    consensus_per_quarter = pd.DataFrame(
         {
-            "year": years,
+            "quarter": quarters,
             "consensus": total_consensus_list,
         }
     )
 
-    party_agreement_with_other_parties_per_year = pd.concat(
+    party_agreement_with_other_parties_per_quarter = pd.concat(
         in_line_votes_list, axis=1
     ).T
-    party_agreement_with_other_parties_per_year.index = years
+    party_agreement_with_other_parties_per_quarter.index = quarters
 
-    party_agreement_with_other_parties_per_year.columns = (
-        party_agreement_with_other_parties_per_year.columns.get_level_values(1)
+    party_agreement_with_other_parties_per_quarter.columns = party_agreement_with_other_parties_per_quarter.columns.get_level_values(
+        1
     )
 
-    return consensus_per_year, party_agreement_with_other_parties_per_year
+    return (
+        consensus_per_quarter,
+        party_agreement_with_other_parties_per_quarter,
+    )
 
 
 def fetch_and_preprocess_data(database_path, year=2022, drop_meta=True):
