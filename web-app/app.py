@@ -106,6 +106,7 @@ def fetch_correlation_data(selected_year):
             df_with_meta,
             category_counts,
             subcategory_counts,
+            dendrogram,
         )
 
     except Exception as e:
@@ -143,9 +144,13 @@ def index():
 def update_plot():
     selected_year = request.json["selected_year"]
 
-    balbla = fetch_correlation_data(selected_year)
-
-    result, df_all_votes, category_counts, subcategory_counts = balbla
+    (
+        result,
+        df_all_votes,
+        category_counts,
+        subcategory_counts,
+        dendrogram,
+    ) = fetch_correlation_data(selected_year)
 
     if isinstance(result, str):  # If an error occurred
         return jsonify({"error": result})
@@ -153,7 +158,7 @@ def update_plot():
     correlation_matrix_list = result.values.tolist()
     df_all_votes = df_all_votes.values.tolist()
     parties = result.index.tolist()
-
+    print(dendrogram)
     return jsonify(
         {
             "selected_year": selected_year,
@@ -162,6 +167,7 @@ def update_plot():
             "parties": parties,
             "category_counts": dict(category_counts),
             "subcategory_counts": dict(subcategory_counts),
+            "dendrogram": dendrogram,
         }
     )
 
