@@ -129,4 +129,4 @@ Werkzeug==3.0.1
 widgetsnbextension==4.0.9
 zipp==3.17.0
 gunicorn==20.1.0
--e ./src
+-e .
